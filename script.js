@@ -47,27 +47,47 @@ let loadedImages = 0;
 const loader = document.getElementById("loader");
 const loadingText = document.getElementById("loading-text");
 
+// How many frames need to load before we let the user interact
+const fastLoadCount = 30;
+
 function preloadImages() {
+    // 1. Initial fast-load block
+    let initialLoaded = 0;
+    
     for (let i = 0; i < frameCount; i++) {
         const img = new Image();
-        img.src = currentFrame(i);
-        images.push(img);
+        images.push(img); // Reserve spot
         
-        img.onload = () => {
-            loadedImages++;
-            let progress = Math.floor((loadedImages / frameCount) * 100);
-            loadingText.innerText = `Loading Assets... ${progress}%`;
-            
-            if (loadedImages === frameCount) {
-                // Done loading
-                init();
-            }
-        };
-        img.onerror = () => {
-            // If an image fails, still count it so we don't get stuck
-            loadedImages++;
-            if (loadedImages === frameCount) init();
+        // Only trigger network requests for the first few frames initially
+        if (i < fastLoadCount) {
+            loadFrame(i, () => {
+                initialLoaded++;
+                let progress = Math.floor((initialLoaded / fastLoadCount) * 100);
+                loadingText.innerText = `Loading Assets... ${progress}%`;
+                
+                if (initialLoaded === fastLoadCount) {
+                    init(); // Start experience
+                    lazyLoadRest(); // Silently load everything else
+                }
+            });
         }
+    }
+}
+
+function loadFrame(index, callback) {
+    images[index].src = currentFrame(index);
+    images[index].onload = callback;
+    images[index].onerror = callback; // ensure we dont lock up on failure
+}
+
+function lazyLoadRest() {
+    let delay = 100;
+    // Load remaining frames in batches to avoid network congestion
+    for (let i = fastLoadCount; i < frameCount; i++) {
+        setTimeout(() => {
+            loadFrame(i, () => {});
+        }, delay);
+        delay += 5; // Stagger requests
     }
 }
 
@@ -126,6 +146,7 @@ preloadImages();
 // Add 3D Mouse Parallax Effect to Hero Section
 const heroContent = document.querySelector('.hero-content');
 
+// Desktop Mouse Tracking
 document.addEventListener('mousemove', (e) => {
     // Only apply effect when near the top (in hero section)
     if (window.scrollY > window.innerHeight) return;
@@ -133,14 +154,41 @@ document.addEventListener('mousemove', (e) => {
     const xAxis = (window.innerWidth / 2 - e.pageX) / 25;
     const yAxis = (window.innerHeight / 2 - e.pageY) / 25;
 
-    // Apply the 3D transform
-    if (heroContent && heroContent.classList.contains('visible')) {
-        heroContent.style.transform = `rotateY(${xAxis}deg) rotateX(${yAxis}deg)`;
-    }
+    applyTilt(xAxis, yAxis);
 });
 
 // Reset transform on mouse leave
 document.addEventListener('mouseleave', () => {
+    resetTilt();
+});
+
+// Mobile Gyroscope Tracking
+if (window.DeviceOrientationEvent) {
+    window.addEventListener('deviceorientation', (e) => {
+        if (window.scrollY > window.innerHeight) return;
+
+        // e.gamma is left/right tilt [-90 to 90]
+        // e.beta is front/back tilt [-180 to 180]
+        // Limit the rotation so it doesn't spin uncontrollably
+        
+        let xAxis = e.gamma; 
+        let yAxis = e.beta - 45; // Offset assuming user holds phone at 45 degree angle
+        
+        // Clamp values to prevent extreme flipping
+        xAxis = Math.max(-30, Math.min(30, xAxis));
+        yAxis = Math.max(-30, Math.min(30, yAxis));
+
+        applyTilt(xAxis, -yAxis); // Invert Y axis for natural feel
+    });
+}
+
+function applyTilt(x, y) {
+    if (heroContent && heroContent.classList.contains('visible')) {
+        heroContent.style.transform = `rotateY(${x}deg) rotateX(${y}deg)`;
+    }
+}
+
+function resetTilt() {
     if (heroContent && heroContent.classList.contains('visible')) {
         heroContent.style.transform = `rotateY(0deg) rotateX(0deg)`;
         heroContent.style.transition = 'transform 0.5s ease';
@@ -148,4 +196,4 @@ document.addEventListener('mouseleave', () => {
              heroContent.style.transition = 'transform 0.1s ease-out';
         }, 500);
     }
-});
+}
