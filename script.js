@@ -43,52 +43,71 @@ document.querySelectorAll('.content').forEach(element => {
 });
 
 // Preload Images
-let loadedImages = 0;
 const loader = document.getElementById("loader");
 const loadingText = document.getElementById("loading-text");
+const fastLoadCount = 30; // Frames before we start the experience
 
-// How many frames need to load before we let the user interact
-const fastLoadCount = 30;
-
-function preloadImages() {
-    // 1. Initial fast-load block
+async function preloadImages() {
     let initialLoaded = 0;
     
-    for (let i = 0; i < frameCount; i++) {
+    // Create an array of Promises for the initial fast-load frames
+    const fastLoadPromises = [];
+    
+    for (let i = 0; i < fastLoadCount; i++) {
         const img = new Image();
         images.push(img); // Reserve spot
         
-        // Only trigger network requests for the first few frames initially
-        if (i < fastLoadCount) {
-            loadFrame(i, () => {
+        const p = new Promise(resolve => {
+            img.onload = () => {
                 initialLoaded++;
                 let progress = Math.floor((initialLoaded / fastLoadCount) * 100);
                 loadingText.innerText = `Loading Assets... ${progress}%`;
-                
-                if (initialLoaded === fastLoadCount) {
-                    init(); // Start experience
-                    lazyLoadRest(); // Silently load everything else
-                }
-            });
-        }
+                resolve();
+            };
+            img.onerror = () => {
+                // If an image fails to load, resolve anyway so it doesn't block
+                initialLoaded++;
+                resolve();
+            };
+            img.src = currentFrame(i); // Assign src after setting handlers
+        });
+        fastLoadPromises.push(p);
     }
-}
-
-function loadFrame(index, callback) {
-    images[index].src = currentFrame(index);
-    images[index].onload = callback;
-    images[index].onerror = callback; // ensure we dont lock up on failure
+    
+    for (let i = fastLoadCount; i < frameCount; i++) {
+        images.push(new Image()); // Just reserve spots for the rest
+    }
+    
+    // Wait for the first batch to finish
+    await Promise.all(fastLoadPromises);
+    
+    // Start experience immediately after fast load
+    init();
+    
+    // Silently load the rest
+    lazyLoadRest();
 }
 
 function lazyLoadRest() {
-    let delay = 100;
-    // Load remaining frames in batches to avoid network congestion
-    for (let i = fastLoadCount; i < frameCount; i++) {
-        setTimeout(() => {
-            loadFrame(i, () => {});
-        }, delay);
-        delay += 5; // Stagger requests
+    // Load remaining frames in small batches (e.g., 5 at a time) to avoid
+    // hitting iOS/Safari concurrent connection limits which cause silent failures
+    const batchSize = 5;
+    let currentIndex = fastLoadCount;
+    
+    function loadNextBatch() {
+        if (currentIndex >= frameCount) return;
+        
+        const end = Math.min(currentIndex + batchSize, frameCount);
+        for (let i = currentIndex; i < end; i++) {
+            // No strict error tracking here, just load them into browser cache
+            images[i].src = currentFrame(i);
+        }
+        
+        currentIndex = end;
+        setTimeout(loadNextBatch, 100); // Wait 100ms before next batch
     }
+    
+    loadNextBatch();
 }
 
 function init() {
@@ -101,25 +120,30 @@ function init() {
     }, 800);
 
     resizeCanvas();
-    render();
+    // Render the first frame explicitly just in case scrolling hasn't happened
+    updateImage(0); 
     
     // Add scroll event listener
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
 }
 
 function handleScroll() {
-    const scrollTop = document.documentElement.scrollTop;
-    // Total scrollable area = Total document height - window height
-    const maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
-    const scrollFraction = scrollTop / maxScrollTop;
-    
-    // Calculate the current frame based on scroll percentage
-    const frameIndex = Math.min(
-        frameCount - 1,
-        Math.floor(scrollFraction * frameCount)
-    );
-    
-    requestAnimationFrame(() => updateImage(frameIndex));
+    // Use requestAnimationFrame for smooth visual updates
+    requestAnimationFrame(() => {
+        const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+        const maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
+        
+        if (maxScrollTop <= 0) return;
+        
+        const scrollFraction = Math.max(0, Math.min(1, scrollTop / maxScrollTop));
+        
+        const frameIndex = Math.min(
+            frameCount - 1,
+            Math.floor(scrollFraction * frameCount)
+        );
+        
+        updateImage(frameIndex);
+    });
 }
 
 function updateImage(index) {
@@ -128,7 +152,8 @@ function updateImage(index) {
 }
 
 function render() {
-    if (!images[imageObj.frame]) return;
+    // Don't try to render if the image object doesn't exist or hasn't actually loaded a src yet
+    if (!images[imageObj.frame] || !images[imageObj.frame].complete || images[imageObj.frame].naturalWidth === 0) return;
     
     const img = images[imageObj.frame];
     // Scale image to cover the canvas (Object-Fit: Cover equivalent)
@@ -136,7 +161,8 @@ function render() {
     const x = (canvas.width / 2) - (img.width / 2) * scale;
     const y = (canvas.height / 2) - (img.height / 2) * scale;
     
-    context.clearRect(0, 0, canvas.width, canvas.height);
+    // Performance optimization: no need to clearRect if we are drawing a completely opaque image over the whole canvas
+    // context.clearRect(0, 0, canvas.width, canvas.height); 
     context.drawImage(img, x, y, img.width * scale, img.height * scale);
 }
 
