@@ -40,24 +40,34 @@ const loader = document.getElementById("loader");
 const loadingText = document.getElementById("loading-text");
 let videoReady = false;
 
+function startExperience() {
+    if (videoReady) return;
+    videoReady = true;
+    loadingText.innerText = 'Loading Assets... 100%';
+    init();
+}
+
+video.addEventListener('canplaythrough', startExperience);
+video.addEventListener('loadeddata', startExperience);
+
+// iOS Safari won't preload video data without user interaction.
+// Once metadata is available, force-start playback then immediately pause
+// to trigger data loading. If that still doesn't work, start anyway.
 video.addEventListener('loadedmetadata', () => {
     loadingText.innerText = 'Loading Assets... 50%';
-});
 
-video.addEventListener('canplaythrough', () => {
-    if (videoReady) return;
-    videoReady = true;
-    loadingText.innerText = 'Loading Assets... 100%';
-    init();
-});
-
-// Fallback — if canplaythrough doesn't fire (common on mobile),
-// start after loadeddata which means at least some data is available
-video.addEventListener('loadeddata', () => {
-    if (videoReady) return;
-    videoReady = true;
-    loadingText.innerText = 'Loading Assets... 100%';
-    init();
+    // Try to kick-start data loading on iOS
+    const playPromise = video.play();
+    if (playPromise) {
+        playPromise.then(() => {
+            video.pause();
+            video.currentTime = 0;
+            startExperience();
+        }).catch(() => {
+            // Autoplay blocked — start experience anyway, seeking will load data on demand
+            startExperience();
+        });
+    }
 });
 
 function init() {
