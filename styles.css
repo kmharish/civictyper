@@ -1,0 +1,223 @@
+:root {
+    --bg-color: #050505;
+    --text-primary: #ffffff;
+    --text-accent: #e21b22; /* Honda Red */
+    --font-main: 'Outfit', sans-serif;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body, html {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    font-family: var(--font-main);
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+}
+
+/* Loading Screen */
+.loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--bg-color);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+    transition: opacity 0.8s ease-out;
+}
+
+.spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--text-accent);
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+#loading-text {
+    font-size: 1.2rem;
+    letter-spacing: 2px;
+    font-weight: 300;
+}
+
+/* Canvas Container */
+canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0.6; /* Slight transparency so text pops more */
+    pointer-events: none;
+}
+
+/* Sections for Scroll Content */
+.main-content {
+    position: relative;
+    z-index: 10;
+}
+
+.scroll-section {
+    height: 150vh; /* Adds scrollable space per section */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 10vw;
+    position: relative;
+    pointer-events: none;
+}
+
+.content {
+    max-width: 600px;
+    opacity: 0;
+    transform: translateY(40px);
+    transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: auto;
+}
+
+.content.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hero {
+    perspective: 1000px;
+}
+
+.hero-content {
+    text-align: center;
+    margin: 0 auto;
+    transform-style: preserve-3d;
+    transition: transform 0.1s ease-out;
+}
+
+.hero-content h1 {
+    transform: translateZ(80px);
+}
+
+.hero-content h2 {
+    transform: translateZ(50px);
+}
+
+.hero-content p {
+    transform: translateZ(30px);
+}
+
+h1 {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 700;
+    letter-spacing: -2px;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+h2 {
+    font-size: clamp(1.5rem, 4vw, 3rem);
+    font-weight: 300;
+    color: var(--text-accent);
+    letter-spacing: 4px;
+    margin-bottom: 2rem;
+}
+
+h3 {
+    font-size: clamp(2rem, 5vw, 4rem);
+    font-weight: 700;
+    margin-bottom: 1rem;
+    position: relative;
+    display: inline-block;
+}
+
+h3::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 0;
+    width: 50px;
+    height: 3px;
+    background-color: var(--text-accent);
+}
+
+.content.right-aligned h3::after,
+.content.center-aligned h3::after {
+    left: auto;
+}
+
+.content p {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    font-weight: 300;
+    opacity: 0.8;
+}
+
+.left-aligned {
+    margin-right: auto;
+}
+
+.right-aligned {
+    margin-left: auto;
+    text-align: right;
+}
+
+.right-aligned h3::after {
+    right: 0;
+}
+
+.center-aligned {
+    margin: 0 auto;
+    text-align: center;
+}
+
+.center-aligned h3::after {
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* Scroll indicator animation */
+.scroll-indicator {
+    position: absolute;
+    bottom: 10vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 50px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    pointer-events: none;
+}
+
+.scroll-indicator span {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 8px;
+    background-color: var(--text-accent);
+    border-radius: 2px;
+    animation: scrollBounce 2s infinite cubic-bezier(0.15, 0.41, 0.69, 0.94);
+}
+
+@keyframes scrollBounce {
+    0% { opacity: 0; transform: translate(-50%, 0); }
+    20% { opacity: 1; }
+    80% { opacity: 0; transform: translate(-50%, 25px); }
+    100% { opacity: 0; transform: translate(-50%, 25px); }
+}
