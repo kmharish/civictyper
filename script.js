@@ -2,7 +2,7 @@ const canvas = document.getElementById("experience-canvas");
 const context = canvas.getContext("2d");
 
 // Configuration
-const frameCount = 738;
+const frameCount = 740;
 const framesDir = "frames_webp/";
 // To format number to 4 digits: e.g., 0012
 const currentFrame = index => (
