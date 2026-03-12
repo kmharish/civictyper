@@ -60,8 +60,8 @@ body {
     font-weight: 300;
 }
 
-/* Video Background */
-video {
+/* Canvas Container */
+canvas {
     position: fixed;
     top: 0;
     left: 0;
