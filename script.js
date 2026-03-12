@@ -189,23 +189,47 @@ document.addEventListener('mouseleave', () => {
 });
 
 // Mobile Gyroscope Tracking
-if (window.DeviceOrientationEvent) {
-    window.addEventListener('deviceorientation', (e) => {
-        if (window.scrollY > window.innerHeight) return;
+function handleDeviceOrientation(e) {
+    if (window.scrollY > window.innerHeight) return;
 
-        // e.gamma is left/right tilt [-90 to 90]
-        // e.beta is front/back tilt [-180 to 180]
-        // Limit the rotation so it doesn't spin uncontrollably
-        
-        let xAxis = e.gamma; 
-        let yAxis = e.beta - 45; // Offset assuming user holds phone at 45 degree angle
-        
-        // Clamp values to prevent extreme flipping
-        xAxis = Math.max(-30, Math.min(30, xAxis));
-        yAxis = Math.max(-30, Math.min(30, yAxis));
+    // e.gamma is left/right tilt [-90 to 90]
+    // e.beta is front/back tilt [-180 to 180]
+    let xAxis = e.gamma;
+    let yAxis = e.beta - 45; // Offset assuming user holds phone at 45 degree angle
 
-        applyTilt(xAxis, -yAxis); // Invert Y axis for natural feel
+    // Clamp values to prevent extreme flipping
+    xAxis = Math.max(-30, Math.min(30, xAxis));
+    yAxis = Math.max(-30, Math.min(30, yAxis));
+
+    applyTilt(xAxis, -yAxis); // Invert Y axis for natural feel
+}
+
+function enableDeviceOrientation() {
+    window.addEventListener('deviceorientation', handleDeviceOrientation);
+}
+
+// iOS 13+ requires a user-gesture-triggered permission request
+if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // Show a one-time button to request permission on iOS
+    const permBtn = document.createElement('button');
+    permBtn.textContent = 'Enable Motion';
+    Object.assign(permBtn.style, {
+        position: 'fixed', bottom: '20px', right: '20px', zIndex: '10000',
+        padding: '12px 20px', border: 'none', borderRadius: '8px',
+        background: '#e21b22', color: '#fff', fontSize: '14px',
+        fontFamily: "'Outfit', sans-serif", letterSpacing: '1px', cursor: 'pointer'
     });
+    document.body.appendChild(permBtn);
+
+    permBtn.addEventListener('click', () => {
+        DeviceOrientationEvent.requestPermission().then(state => {
+            if (state === 'granted') enableDeviceOrientation();
+        });
+        permBtn.remove();
+    });
+} else if (window.DeviceOrientationEvent) {
+    // Android and older iOS — no permission needed
+    enableDeviceOrientation();
 }
 
 function applyTilt(x, y) {
