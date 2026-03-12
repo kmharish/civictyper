@@ -11,12 +11,17 @@
     box-sizing: border-box;
 }
 
-body, html {
+html {
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-family: var(--font-main);
-    overflow-x: hidden;
     overscroll-behavior-y: none;
+}
+
+body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Loading Screen */
